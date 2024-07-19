@@ -59,7 +59,7 @@ app.post("/login", async (req, res) => {
             id: user._id,
           },
           jwtSecret,
-          { expiresIn: "1h" } 
+          { expiresIn: "1h" }
         );
 
         res.json({ token, user });
@@ -79,14 +79,13 @@ app.post("/register", async (req, res) => {
   const userData = req.body;
   const { phone, email, name, dob, monthlySalary, password } = userData;
   try {
-    
     const age = calculateAge(dob);
     if (age < 20 || monthlySalary < 25000) {
       return res
         .status(400)
         .json({ message: "User does not meet the criteria" });
     }
-    
+
     const newUser = await User.create({
       phone,
       email,
@@ -106,6 +105,28 @@ app.get("/user", authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
     res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post("/borrow", authenticateToken, async (req, res) => {
+  const { amount } = req.body;
+  try {
+    const user = await User.findById(req.user.id);
+
+    // Update Purchase Power amount
+    user.purchasePower += amount;
+
+    // Calculate repayment details
+    const interestRate = 0.08;
+    const monthlyRepayment = (amount * (1 + interestRate)) / 12;
+
+    await user.save();
+    res.json({
+      purchasePower: user.purchasePower,
+      monthlyRepayment,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
